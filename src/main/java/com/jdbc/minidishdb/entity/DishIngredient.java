@@ -1,6 +1,6 @@
 package com.jdbc.minidishdb.entity;
 
-import com.jdbc.minidishdb.enums.CategoryEnum;
+import com.jdbc.minidishdb.enums.UnitTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,9 +10,11 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-public class Ingredient {
+public class DishIngredient {
     private int id;
-    private String name;
-    private Double price;
-    private CategoryEnum category;
+    private Ingredient ingredient;
+    private Double quantity;
+    private UnitTypeEnum unit;
 }
+
+

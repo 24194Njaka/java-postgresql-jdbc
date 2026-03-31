@@ -17,11 +17,20 @@ public class Dish {
     private int id;
     private String name;
     private DishTypeEnum dishType;
-    private List<Ingredient> ingredients = new ArrayList<>();
+    private List<DishIngredient> ingredients = new ArrayList<>();
+    private Double sellingPrice;
 
-    public Double getDishPrice() {
+    public Double getDishCost() {
+        if (ingredients == null || ingredients.isEmpty()) return 0.0;
         return ingredients.stream()
-                .mapToDouble(Ingredient::getPrice)
+                .mapToDouble(di -> di.getIngredient().getPrice() * di.getQuantity())
                 .sum();
+    }
+
+    public Double getGrossMargin() {
+        if (sellingPrice == null) {
+            throw new RuntimeException("Selling price is NULL for dish : " + name);
+        }
+        return sellingPrice - getDishCost();
     }
 }
