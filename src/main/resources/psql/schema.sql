@@ -16,3 +16,20 @@ CREATE TABLE ingredient (
                             category ingredient_category NOT NULL,
                             id_dish  INT REFERENCES dish(id)
 );
+
+CREATE TYPE unit_type AS ENUM ('PCS', 'KG', 'L');
+
+-- Suppression de la colonne id_dish de ingredient
+ALTER TABLE ingredient DROP COLUMN id_dish;
+
+-- Ajout du prix de vente à dish (optionnel)
+ALTER TABLE dish ADD COLUMN selling_price NUMERIC;
+
+-- Création de la table de jointure DishIngredient
+CREATE TABLE dish_ingredient (
+                                 id                 SERIAL PRIMARY KEY,
+                                 id_dish            INT NOT NULL REFERENCES dish(id),
+                                 id_ingredient      INT NOT NULL REFERENCES ingredient(id),
+                                 quantity_required  NUMERIC NOT NULL,
+                                 unit               unit_type NOT NULL
+);
