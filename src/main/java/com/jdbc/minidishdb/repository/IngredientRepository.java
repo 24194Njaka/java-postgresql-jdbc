@@ -17,7 +17,6 @@ public class IngredientRepository {
         this.dataSource = dataSource;
     }
 
-    // Méthode utilitaire pour mapper un ResultSet en Ingredient
     private Ingredient mapToIngredient(ResultSet rs) throws SQLException {
         Ingredient ingredient = new Ingredient();
         ingredient.setId(rs.getInt("id"));
@@ -27,7 +26,6 @@ public class IngredientRepository {
         return ingredient;
     }
 
-    // B) findIngredients avec pagination
     public List<Ingredient> findIngredients(int page, int size) {
         List<Ingredient> ingredients = new ArrayList<>();
         String sql = "SELECT * FROM ingredient ORDER BY id LIMIT ? OFFSET ?";
