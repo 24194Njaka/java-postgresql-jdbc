@@ -104,6 +104,66 @@ public class IngredientRepository {
 
         return created;
     }
+
+    public List<Ingredient> findIngredientsByCriteria(
+            String ingredientName,
+            CategoryEnum category,
+            String dishName,
+            int page,
+            int size) {
+
+        List<Ingredient> ingredients = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder("""
+            SELECT i.id, i.name, i.price, i.category
+            FROM ingredient i
+            LEFT JOIN dish d ON i.id_dish = d.id
+            WHERE 1=1
+            """);
+
+        // Filtre nom ingrédient
+        if (ingredientName != null && !ingredientName.isBlank()) {
+            sql.append(" AND i.name ILIKE ? ");
+            params.add("%" + ingredientName + "%");
+        }
+
+        // Filtre catégorie
+        if (category != null) {
+            sql.append(" AND i.category = ?::ingredient_category ");
+            params.add(category.name());
+        }
+
+        // Filtre nom du plat
+        if (dishName != null && !dishName.isBlank()) {
+            sql.append(" AND d.name ILIKE ? ");
+            params.add("%" + dishName + "%");
+        }
+
+        // Pagination
+        sql.append(" ORDER BY i.id LIMIT ? OFFSET ? ");
+        params.add(size);
+        params.add((page - 1) * size);
+
+        try (Connection connection = dataSource.getDBConnection();
+             PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+
+            // Injecter les paramètres dynamiquement
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                ingredients.add(mapToIngredient(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findIngredientsByCriteria : " + e.getMessage());
+        }
+
+        return ingredients;
+    }
 }
 
 
