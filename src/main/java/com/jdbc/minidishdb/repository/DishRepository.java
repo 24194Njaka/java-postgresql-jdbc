@@ -73,6 +73,70 @@ public class DishRepository {
 
         return dish;
     }
+
+
+    public Dish saveDish(Dish dishToSave) {
+        String checkSql = "SELECT COUNT(*) FROM dish WHERE id = ?";
+        String insertSql = "INSERT INTO dish (name, dish_type) VALUES (?, ?) RETURNING id";
+        String updateSql = "UPDATE dish SET name = ?, dish_type = ? WHERE id = ?";
+        String unlinkSql = "UPDATE ingredient SET id_dish = NULL WHERE id_dish = ?";
+        String linkSql   = "UPDATE ingredient SET id_dish = ? WHERE id = ?";
+
+        try (Connection connection = dataSource.getDBConnection()) {
+            connection.setAutoCommit(false);
+
+            try {
+                int dishId;
+
+                PreparedStatement checkPs = connection.prepareStatement(checkSql);
+                checkPs.setInt(1, dishToSave.getId());
+                ResultSet rs = checkPs.executeQuery();
+                rs.next();
+                boolean exists = rs.getInt(1) > 0;
+
+                if (!exists) {
+                    PreparedStatement insertPs = connection.prepareStatement(insertSql);
+                    insertPs.setString(1, dishToSave.getName());
+                    insertPs.setObject(2, dishToSave.getDishType().name(), Types.OTHER);
+                    ResultSet insertRs = insertPs.executeQuery();
+                    insertRs.next();
+                    dishId = insertRs.getInt("id");
+                    dishToSave.setId(dishId);
+                } else {
+                    PreparedStatement updatePs = connection.prepareStatement(updateSql);
+                    updatePs.setString(1, dishToSave.getName());
+                    updatePs.setObject(2, dishToSave.getDishType().name(), Types.OTHER);
+                    updatePs.setInt(3, dishToSave.getId());
+                    updatePs.executeUpdate();
+                    dishId = dishToSave.getId();
+                }
+
+                PreparedStatement unlinkPs = connection.prepareStatement(unlinkSql);
+                unlinkPs.setInt(1, dishId);
+                unlinkPs.executeUpdate();
+
+                if (dishToSave.getIngredients() != null) {
+                    PreparedStatement linkPs = connection.prepareStatement(linkSql);
+                    for (Ingredient ingredient : dishToSave.getIngredients()) {
+                        linkPs.setInt(1, dishId);
+                        linkPs.setInt(2, ingredient.getId());
+                        linkPs.executeUpdate();
+                    }
+                }
+
+                connection.commit();
+
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("Erreur saveDish : " + e.getMessage());
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur connexion : " + e.getMessage());
+        }
+
+        return findDishById(dishToSave.getId());
+    }
 }
 
 
