@@ -102,6 +102,25 @@ public class IngredientRepository {
         return created;
     }
 
+    public Ingredient findIngredientById(int id) {
+        String sql = "SELECT * FROM ingredient WHERE id = ?";
+        try (Connection connection = dataSource.getDBConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return mapToIngredient(rs);
+            } else {
+                throw new RuntimeException("Ingredient.id=" + id + " is not found");
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findIngredientById : " + e.getMessage());
+        }
+    }
+
 }
 
 
