@@ -48,6 +48,62 @@ public class IngredientRepository {
 
         return ingredients;
     }
+
+    public List<Ingredient> createIngredients(List<Ingredient> newIngredients) {
+        String checkSql = "SELECT COUNT(*) FROM ingredient WHERE name = ?";
+        String insertSql = "INSERT INTO ingredient (name, price, category) VALUES (?, ?, ?) RETURNING id";
+
+        List<Ingredient> created = new ArrayList<>();
+
+        try (Connection connection = dataSource.getDBConnection()) {
+
+            // Désactiver l'auto-commit pour gérer l'atomicité
+            connection.setAutoCommit(false);
+
+            try {
+                for (Ingredient ingredient : newIngredients) {
+
+                    // Vérifier si l'ingrédient existe déjà
+                    PreparedStatement checkPs = connection.prepareStatement(checkSql);
+                    checkPs.setString(1, ingredient.getName());
+                    ResultSet rs = checkPs.executeQuery();
+                    rs.next();
+                    int count = rs.getInt(1);
+
+                    if (count > 0) {
+                        // Annuler toute l'opération
+                        connection.rollback();
+                        throw new RuntimeException(
+                                "Ingredient '" + ingredient.getName() + "' already exists !"
+                        );
+                    }
+
+                    PreparedStatement insertPs = connection.prepareStatement(insertSql);
+                    insertPs.setString(1, ingredient.getName());
+                    insertPs.setDouble(2, ingredient.getPrice());
+                    insertPs.setObject(3, ingredient.getCategory().name(),
+                            Types.OTHER);
+
+                    ResultSet insertRs = insertPs.executeQuery();
+                    if (insertRs.next()) {
+                        ingredient.setId(insertRs.getInt("id"));
+                        created.add(ingredient);
+                    }
+                }
+
+                connection.commit();
+
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("Erreur createIngredients : " + e.getMessage());
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur connexion : " + e.getMessage());
+        }
+
+        return created;
+    }
 }
 
 
