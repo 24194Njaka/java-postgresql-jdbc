@@ -74,7 +74,6 @@ public class DishRepository {
         return dish;
     }
 
-
     public Dish saveDish(Dish dishToSave) {
         String checkSql = "SELECT COUNT(*) FROM dish WHERE id = ?";
         String insertSql = "INSERT INTO dish (name, dish_type) VALUES (?, ?) RETURNING id";
@@ -136,6 +135,50 @@ public class DishRepository {
         }
 
         return findDishById(dishToSave.getId());
+    }
+
+    public List<Dish> findDishsByIngredientName(String ingredientName) {
+        String sql = """
+            SELECT d.id, d.name, d.dish_type,
+                   i.id AS ing_id, i.name AS ing_name,
+                   i.price AS ing_price, i.category AS ing_category
+            FROM dish d
+            LEFT JOIN ingredient i ON i.id_dish = d.id
+            WHERE i.name ILIKE ?
+            """;
+
+        List<Dish> dishes = new ArrayList<>();
+
+        try (Connection connection = dataSource.getDBConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setString(1, "%" + ingredientName + "%");
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                int dishId = rs.getInt("id");
+
+                // Chercher si le plat existe déjà dans la liste
+                Dish dish = dishes.stream()
+                        .filter(d -> d.getId() == dishId)
+                        .findFirst()
+                        .orElse(null);
+
+                if (dish == null) {
+                    dish = mapToDish(rs);
+                    dishes.add(dish);
+                }
+
+                if (rs.getInt("ing_id") != 0) {
+                    dish.getIngredients().add(mapToIngredient(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findDishsByIngredientName : " + e.getMessage());
+        }
+
+        return dishes;
     }
 }
 
