@@ -21,9 +21,9 @@ public class Ingredient {
     private CategoryEnum category;
     private List<StockMovement> stockMovementList = new ArrayList<>();
 
-    public StockValue getStockValueAt(Instant t) {
+    public StockValue getStockValueAt(String t) {
         double quantity = stockMovementList.stream()
-                .filter(sm -> !sm.getCreationDatetime().isAfter(t))
+                .filter(sm -> sm.getCreationDatetime().compareTo(t) <= 0)
                 .mapToDouble(sm -> {
                     switch (sm.getType()) {
                         case IN:  return sm.getValue().getQuantity();
@@ -36,4 +36,5 @@ public class Ingredient {
         return new StockValue(quantity, stockMovementList.isEmpty() ? null
                 : stockMovementList.get(0).getValue().getUnit());
     }
+
 }

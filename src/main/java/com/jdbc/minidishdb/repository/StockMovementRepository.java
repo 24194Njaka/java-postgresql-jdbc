@@ -7,7 +7,14 @@ import com.jdbc.minidishdb.enums.MovementTypeEnum;
 import com.jdbc.minidishdb.enums.UnitTypeEnum;
 import org.springframework.stereotype.Component;
 
-import java.sql.*;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,23 +27,25 @@ public class StockMovementRepository {
         this.dataSource = dataSource;
     }
 
-    // Mapper StockMovement
     private StockMovement mapToStockMovement(ResultSet rs) throws SQLException {
         StockMovement sm = new StockMovement();
         sm.setId(rs.getInt("id"));
         sm.setType(MovementTypeEnum.valueOf(rs.getString("type")));
-        sm.setCreationDatetime(rs.getTimestamp("creation_datetime").toInstant());
+        sm.setCreationDatetime(rs.getTimestamp("creation_datetime").toString());
+
         StockValue value = new StockValue();
         value.setQuantity(rs.getDouble("quantity"));
         value.setUnit(UnitTypeEnum.valueOf(rs.getString("unit")));
         sm.setValue(value);
+
         return sm;
     }
 
     // Trouver les mouvements par ingrédient
     public List<StockMovement> findByIngredientId(int ingredientId) {
         String sql = """
-                SELECT * FROM stock_movement
+                SELECT id, quantity, unit, type, creation_datetime
+                FROM stock_movement
                 WHERE id_ingredient = ?
                 ORDER BY creation_datetime ASC
                 """;
@@ -54,6 +63,39 @@ public class StockMovementRepository {
 
         } catch (SQLException e) {
             throw new RuntimeException("Erreur findByIngredientId : " + e.getMessage());
+        }
+
+        return movements;
+    }
+
+    // Trouver les mouvements par ingrédient et plage de dates
+    public List<StockMovement> findByIngredientIdAndDateRange(
+            int ingredientId, String from, String to) {
+        String sql = """
+            SELECT id, quantity, unit, type, creation_datetime
+            FROM stock_movement
+            WHERE id_ingredient = ?
+            AND creation_datetime >= ?
+            AND creation_datetime <= ?
+            ORDER BY creation_datetime ASC
+            """;
+
+        List<StockMovement> movements = new ArrayList<>();
+
+        try (Connection connection = dataSource.getDBConnection();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, ingredientId);
+            ps.setString(2, from);
+            ps.setString(3, to);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                movements.add(mapToStockMovement(rs));
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur findByIngredientIdAndDateRange : " + e.getMessage());
         }
 
         return movements;
@@ -99,7 +141,7 @@ public class StockMovementRepository {
                         movPs.setDouble(2, sm.getValue().getQuantity());
                         movPs.setString(3, sm.getType().name());
                         movPs.setString(4, sm.getValue().getUnit().name());
-                        movPs.setTimestamp(5, Timestamp.from(sm.getCreationDatetime()));
+                        movPs.setTimestamp(5, Timestamp.valueOf(sm.getCreationDatetime()));
                         movPs.executeUpdate();
                     }
                 }
@@ -115,7 +157,6 @@ public class StockMovementRepository {
             throw new RuntimeException("Erreur connexion : " + e.getMessage());
         }
 
-        // Recharger les mouvements
         toSave.setStockMovementList(findByIngredientId(toSave.getId()));
         return toSave;
     }

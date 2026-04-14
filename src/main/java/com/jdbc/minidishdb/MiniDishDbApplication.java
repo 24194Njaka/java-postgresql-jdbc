@@ -24,6 +24,11 @@ public class MiniDishDbApplication {
         DishRepository dishRepository = new DishRepository(dataSource);
         IngredientRepository ingredientRepository = new IngredientRepository(dataSource);
 
+        SpringApplication.run(MiniDishDbApplication.class, args);
+
+
+
+
 
     }
 }
