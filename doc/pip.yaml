@@ -3,9 +3,12 @@ info:
   title: Mini Dish  API
   description: API REST pour la gestion des ingrédients et des plats
   version: 1.0.0
+
 servers:
   - url: http://localhost:8080
+
 paths:
+
   /ingredients:
     get:
       summary: Retourne la liste des ingrédients
@@ -21,8 +24,218 @@ paths:
         '500':
           description: Erreur serveur
 
+  /ingredients/{id}:
+    get:
+      summary: Retourne un ingrédient par son identifiant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Ingrédient trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+        '404':
+          description: Ingrédient non trouvé
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Ingredient.id={id} is not found"
+        '500':
+          description: Erreur serveur
+
+  /ingredients/{id}/stock:
+    get:
+      summary: Retourne la valeur du stock d'un ingrédient à un instant donné
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: at
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "2024-01-06 12:00:00"
+        - name: unit
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [PCS, KG, L]
+      responses:
+        '200':
+          description: Valeur du stock retournée avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockValue'
+        '400':
+          description: Paramètre obligatoire manquant
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Either mandatory query parameter `at` or `unit` is not provided."
+        '404':
+          description: Ingrédient non trouvé
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Ingredient.id={id} is not found"
+        '500':
+          description: Erreur serveur
+
+  /ingredients/{id}/stockMovements:
+    get:
+      summary: Retourne les mouvements de stock d'un ingrédient filtrés par plage de dates
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "2024-01-05 08:00:00"
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "2024-01-06 12:00:00"
+      responses:
+        '200':
+          description: Liste des mouvements de stock retournée avec succès
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StockMovement'
+        '404':
+          description: Ingrédient non trouvé
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Ingredient.id={id} is not found"
+        '500':
+          description: Erreur serveur
+
+    post:
+      summary: Ajouter des mouvements de stock à un ingrédient
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/StockMovementRequest'
+      responses:
+        '201':
+          description: Mouvements de stock créés avec succès
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StockMovement'
+        '400':
+          description: Corps de la requête manquant
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Request body is mandatory"
+        '404':
+          description: Ingrédient non trouvé
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Ingredient.id={id} is not found"
+        '500':
+          description: Erreur serveur
+
+  /dishes:
+    get:
+      summary: Retourne la liste des plats avec leurs ingrédients
+      responses:
+        '200':
+          description: Liste des plats retournée avec succès
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dish'
+        '500':
+          description: Erreur serveur
+
+  /dishes/{id}/ingredients:
+    put:
+      summary: Associer ou dissocier des ingrédients d'un plat
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/IngredientRef'
+      responses:
+        '200':
+          description: Plat mis à jour avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+        '400':
+          description: Corps de la requête manquant
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Request body is mandatory"
+        '404':
+          description: Plat non trouvé
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Dish.id={id} is not found"
+        '500':
+          description: Erreur serveur
+
 components:
   schemas:
+
     Ingredient:
       type: object
       properties:
@@ -35,3 +248,73 @@ components:
         category:
           type: string
           enum: [VEGETABLE, ANIMAL, MARINE, DAIRY, OTHER]
+
+    IngredientRef:
+      type: object
+      properties:
+        id:
+          type: integer
+
+    StockValue:
+      type: object
+      properties:
+        quantity:
+          type: number
+        unit:
+          type: string
+          enum: [PCS, KG, L]
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+        value:
+          $ref: '#/components/schemas/StockValue'
+        type:
+          type: string
+          enum: [IN, OUT]
+        creationDatetime:
+          type: string
+          example: "2024-01-07 10:00:00"
+
+    StockMovementRequest:
+      type: object
+      properties:
+        value:
+          $ref: '#/components/schemas/StockValue'
+        type:
+          type: string
+          enum: [IN, OUT]
+        creationDatetime:
+          type: string
+          example: "2024-01-07 10:00:00"
+
+    Dish:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        dishType:
+          type: string
+          enum: [START, MAIN, DESSERT]
+        sellingPrice:
+          type: number
+          nullable: true
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/DishIngredient'
+
+    DishIngredient:
+      type: object
+      properties:
+        ingredient:
+          $ref: '#/components/schemas/Ingredient'
+        quantity:
+          type: number
+        unit:
+          type: string
+          enum: [PCS, KG, L]
